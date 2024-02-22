@@ -1,36 +1,41 @@
-// ContactForm.jsx
-
 import React, { useState, useEffect } from 'react';
 import { nanoid } from 'nanoid';
 import { useDispatch, useSelector } from 'react-redux';
-import { addContact, selectContacts } from '../../redux/contactsSlice';
+import { addContact } from '../../redux/contactsSlice';
 import styles from './ContactForm.module.css';
+
+const initialState = {
+  name: '',
+  number: '',
+  numberError: '',
+  nameError: '',
+};
 
 const ContactForm = () => {
   const dispatch = useDispatch();
-  const contacts = useSelector(selectContacts);
+  const contacts = useSelector(state => state.contacts.items);
 
-  const [name, setName] = useState('');
-  const [number, setNumber] = useState('');
-  const [numberError, setNumberError] = useState('');
-  const [nameError, setNameError] = useState('');
+  const [formData, setFormData] = useState(initialState);
+
+  const { name, number, numberError, nameError } = formData;
 
   useEffect(() => {
     const storedContacts = localStorage.getItem('contacts');
     if (storedContacts) {
       const parsedContacts = JSON.parse(storedContacts);
-
-      if (JSON.stringify(parsedContacts) !== JSON.stringify(contacts)) {
-        dispatch(addContact(parsedContacts));
-      }
+      dispatch(addContact(parsedContacts));
     }
-  }, [contacts, dispatch]);
+  }, [dispatch]);
 
   const handleSubmit = e => {
     e.preventDefault();
 
-    if (!/^\+?\d+$/.test(number)) {
-      setNumberError('Insert correct number');
+    const phoneRegExp = /^\+?[0-9\s()-]{7,}$/;
+    if (!phoneRegExp.test(number)) {
+      setFormData({
+        ...formData,
+        numberError: 'Invalid phone number. Please enter a valid phone number.',
+      });
       return;
     }
 
@@ -38,18 +43,22 @@ const ContactForm = () => {
       contact => contact.number === number
     );
     if (existingContactWithNumber) {
-      setNameError(
-        `This number is assigned to the contact ${existingContactWithNumber.name}`
-      );
+      setFormData({
+        ...formData,
+        nameError: `This number is assigned to the contact ${existingContactWithNumber.name}`,
+      });
       return;
     }
 
-    if (
-      contacts.some(
-        contact => contact.name.toLowerCase() === name.toLowerCase()
-      )
-    ) {
-      setNameError('Contact with this name already exists');
+    const isNameAlreadyExists = contacts.some(
+      contact =>
+        contact.name && contact.name.toLowerCase() === name.toLowerCase()
+    );
+    if (isNameAlreadyExists) {
+      setFormData({
+        ...formData,
+        nameError: 'Contact with this name already exists',
+      });
       return;
     }
 
@@ -58,14 +67,12 @@ const ContactForm = () => {
       name: name,
       number: number,
     };
-    const updatedContacts = [...contacts, newContact];
-    dispatch(addContact(updatedContacts));
-    localStorage.setItem('contacts', JSON.stringify(updatedContacts));
+    console.log('Adding new contact:', newContact);
 
-    setName('');
-    setNumber('');
-    setNameError('');
-    setNumberError('');
+    dispatch(addContact(newContact));
+    localStorage.setItem('contacts', JSON.stringify([...contacts, newContact]));
+
+    setFormData(initialState);
   };
 
   return (
@@ -80,8 +87,7 @@ const ContactForm = () => {
           required
           value={name}
           onChange={e => {
-            setName(e.target.value);
-            setNameError('');
+            setFormData({ ...formData, name: e.target.value, nameError: '' });
           }}
         />
         {nameError && <p className={styles['error-message']}>{nameError}</p>}
@@ -92,12 +98,14 @@ const ContactForm = () => {
           className={styles.input}
           type="tel"
           name="number"
-          pattern="[\d\s()-]+"
           required
           value={number}
           onChange={e => {
-            setNumber(e.target.value);
-            setNumberError('');
+            setFormData({
+              ...formData,
+              number: e.target.value,
+              numberError: '',
+            });
           }}
         />
         {numberError && (
