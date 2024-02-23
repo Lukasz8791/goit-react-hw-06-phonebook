@@ -1,40 +1,31 @@
-import React, { useState, useEffect } from 'react';
-import { nanoid } from 'nanoid';
+import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { addContact } from '../../redux/contactsSlice';
+import { addContact, saveToLocalStorage } from '../../redux/contactsSlice';
+import { nanoid } from 'nanoid';
 import styles from './ContactForm.module.css';
-
-const initialState = {
-  name: '',
-  number: '',
-  numberError: '',
-  nameError: '',
-};
 
 const ContactForm = () => {
   const dispatch = useDispatch();
   const contacts = useSelector(state => state.contacts.items);
 
-  const [formData, setFormData] = useState(initialState);
+  const [formData, setFormData] = useState({
+    name: '',
+    number: '',
+    nameError: '',
+    numberError: '',
+  });
 
-  const { name, number, numberError, nameError } = formData;
-
-  useEffect(() => {
-    const storedContacts = localStorage.getItem('contacts');
-    if (storedContacts) {
-      const parsedContacts = JSON.parse(storedContacts);
-      dispatch(addContact(parsedContacts));
-    }
-  }, [dispatch]);
+  const { name, number, nameError, numberError } = formData;
 
   const handleSubmit = e => {
     e.preventDefault();
 
     const phoneRegExp = /^\+?[0-9\s()-]{7,}$/;
+
     if (!phoneRegExp.test(number)) {
       setFormData({
         ...formData,
-        numberError: 'Invalid phone number. Please enter a valid phone number.',
+        numberError: 'Insert correct number',
       });
       return;
     }
@@ -42,6 +33,7 @@ const ContactForm = () => {
     const existingContactWithNumber = contacts.find(
       contact => contact.number === number
     );
+
     if (existingContactWithNumber) {
       setFormData({
         ...formData,
@@ -54,6 +46,7 @@ const ContactForm = () => {
       contact =>
         contact.name && contact.name.toLowerCase() === name.toLowerCase()
     );
+
     if (isNameAlreadyExists) {
       setFormData({
         ...formData,
@@ -67,12 +60,16 @@ const ContactForm = () => {
       name: name,
       number: number,
     };
-    console.log('Adding new contact:', newContact);
 
     dispatch(addContact(newContact));
-    localStorage.setItem('contacts', JSON.stringify([...contacts, newContact]));
+    dispatch(saveToLocalStorage());
 
-    setFormData(initialState);
+    setFormData({
+      name: '',
+      number: '',
+      nameError: '',
+      numberError: '',
+    });
   };
 
   return (

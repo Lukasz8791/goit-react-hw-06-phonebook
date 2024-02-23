@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   setContacts,
@@ -15,6 +15,10 @@ const App = () => {
   const contacts = useSelector(state => state.contacts.items);
   const filter = useSelector(state => state.contacts.filter);
 
+  const handleBeforeUnload = useCallback(() => {
+    localStorage.setItem('contacts', JSON.stringify(contacts));
+  }, [contacts]);
+
   useEffect(() => {
     const storedContacts = localStorage.getItem('contacts');
     if (storedContacts) {
@@ -23,28 +27,21 @@ const App = () => {
   }, [dispatch]);
 
   useEffect(() => {
-    const handleBeforeUnload = () => {
-      localStorage.removeItem('contacts');
-    };
+    const handleUnload = () => handleBeforeUnload();
 
-    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('beforeunload', handleUnload);
 
     return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('beforeunload', handleUnload);
     };
-  }, []);
+  }, [handleBeforeUnload]);
 
   const handleAddContact = newContact => {
     dispatch(addContact(newContact));
-    localStorage.setItem('contacts', JSON.stringify([...contacts, newContact]));
   };
 
   const handleDeleteContact = id => {
     dispatch(deleteContact(id));
-    localStorage.setItem(
-      'contacts',
-      JSON.stringify(contacts.filter(contact => contact.id !== id))
-    );
   };
 
   return (
